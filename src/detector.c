@@ -497,6 +497,133 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
     }
 }
 
+void print_detections(FILE **fps, char *id, int num, float thresh, box *boxes, float **probs, char **names, int classes, int w, int h)
+{
+    int i;
+
+    for(i = 0; i < num; ++i){
+        int class = max_index(probs[i], classes);
+        float prob = probs[i][class];
+        if(prob > thresh){
+
+            printf("%s: %.0f%%\n", names[class], prob*100);
+
+            //width = prob*20+2;
+
+            box b = boxes[i];
+
+            int left  = (b.x-b.w/2.)*w;
+            int right = (b.x+b.w/2.)*w;
+            int top   = (b.y-b.h/2.)*h;
+            int bot   = (b.y+b.h/2.)*h;
+
+            if(left < 0) left = 0;
+            if(right > w-1) right = w-1;
+            if(top < 0) top = 0;
+            if(bot > h-1) bot = h-1;
+
+            fprintf(fps[class], "%s %s %f %d %d %d %d %f %f %f %f \n", id, names[class], prob,
+                    left, top, right, bot, b.x, b.y, b.w, b.h);
+        }
+    }
+}
+
+
+void batch_detector(char *datacfg, char *cfgfile, char *weightfile, char *outfile, float thresh, float hier_thresh)
+{
+    int j;
+    list *options = read_data_cfg(datacfg);
+    char *valid_images = option_find_str(options, "valid", "data/train.list");
+    char *name_list = option_find_str(options, "names", "data/names.list");
+    char *prefix = option_find_str(options, "results", "results");
+    char **names = get_labels(name_list);
+    char *mapf = option_find_str(options, "map", 0);
+    int *map = 0;
+    if (mapf) map = read_map(mapf);
+
+    image **alphabet = load_alphabet();
+    network net = parse_network_cfg(cfgfile);
+    if(weightfile){
+        load_weights(&net, weightfile);
+    }
+    set_batch_network(&net, 1);
+    fprintf(stderr, "Learning Rate: %g, Momentum: %g, Decay: %g\n", net.learning_rate, net.momentum, net.decay);    
+    srand(2222222);
+    clock_t time;
+    char inbuff[256];
+    char *input = inbuff;
+    float nms=.4;
+
+
+    list *plist = get_paths(valid_images);
+    char **paths = (char **)list_to_array(plist);
+
+    layer l = net.layers[net.n-1];
+    int classes = l.classes;
+
+    char buff[1024];
+    char *type = option_find_str(options, "eval", "voc");
+    FILE *fp = 0;
+    FILE **fps = 0;
+    int coco = 0;
+    int imagenet = 0;
+
+    if(!outfile) outfile = "comp4_det_test_";
+    fps = calloc(classes, sizeof(FILE *));
+    for(j = 0; j < classes; ++j){
+        snprintf(buff, 1024, "%s/%s%s.txt", prefix, outfile, names[j]);
+        fps[j] = fopen(buff, "w");
+    }
+
+
+    int m = plist->size;
+    int i=0;
+    int t;
+
+    int nthreads = 1;
+
+    for( i = 0; i < m; ++i){
+
+        char *path = paths[i];
+        char *id = basecfg(path);
+
+        image im = load_image_color(path,0,0);
+        image sized = resize_image(im, net.w, net.h);
+        layer l = net.layers[net.n-1];
+
+        box *boxes = calloc(l.w*l.h*l.n, sizeof(box));
+        float **probs = calloc(l.w*l.h*l.n, sizeof(float *));
+        for(j = 0; j < l.w*l.h*l.n; ++j) probs[j] = calloc(l.classes + 1, sizeof(float *));
+
+        float *X = sized.data;
+        time=clock();
+        network_predict(net, X);
+        printf("%s: Predicted in %f seconds.\n", path, sec(clock()-time));
+        get_region_boxes(l, 1, 1, thresh, probs, boxes, 0, 0, hier_thresh);
+        if (l.softmax_tree && nms) do_nms_obj(boxes, probs, l.w*l.h*l.n, l.classes, nms);
+        else if (nms) do_nms_sort(boxes, probs, l.w*l.h*l.n, l.classes, nms);
+        
+        draw_detections(im, l.w*l.h*l.n, thresh, boxes, probs, names, alphabet, l.classes);
+
+        print_detections(fps, id, l.w*l.h*l.n, thresh, boxes, probs, names, l.classes, im.w, im.h);
+
+        save_image(im, "predictions");
+        show_image(im, "predictions");
+
+        free_image(im);
+        free_image(sized);
+        free(boxes);
+        free_ptrs((void **)probs, l.w*l.h*l.n);        
+
+    }
+
+    for(j = 0; j < classes; ++j){
+        if(fps) fclose(fps[j]);
+    }
+}
+
+
+
 void run_detector(int argc, char **argv)
 {
     char *prefix = find_char_arg(argc, argv, "-prefix", 0);
@@ -538,7 +665,9 @@ void run_detector(int argc, char **argv)
     char *cfg = argv[4];
     char *weights = (argc > 5) ? argv[5] : 0;
     char *filename = (argc > 6) ? argv[6]: 0;
+    fprintf(stderr, "---- datacfg: %s ]\n", datacfg);
     if(0==strcmp(argv[2], "test")) test_detector(datacfg, cfg, weights, filename, thresh, hier_thresh);
+    else if(0==strcmp(argv[2], "batch")) batch_detector(datacfg, cfg, weights, outfile, thresh, hier_thresh);
     else if(0==strcmp(argv[2], "train")) train_detector(datacfg, cfg, weights, gpus, ngpus, clear);
     else if(0==strcmp(argv[2], "valid")) validate_detector(datacfg, cfg, weights, outfile);
     else if(0==strcmp(argv[2], "recall")) validate_detector_recall(cfg, weights);
