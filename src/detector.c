@@ -506,7 +506,7 @@ void print_detections(FILE **fps, char *id, int num, float thresh, box *boxes, f
         float prob = probs[i][class];
         if(prob > thresh){
 
-            printf("%s: %.0f%%\n", names[class], prob*100);
+            //printf("%s: %.0f%%\n", names[class], prob*100);
 
             //width = prob*20+2;
 
@@ -605,7 +605,7 @@ void batch_detector(char *datacfg, char *cfgfile, char *weightfile, char *outfil
         
         draw_detections(im, l.w*l.h*l.n, thresh, boxes, probs, names, alphabet, l.classes);
 
-        print_detections(fps, id, l.w*l.h*l.n, thresh, boxes, probs, names, l.classes, im.w, im.h);
+        print_detections(fps, path, l.w*l.h*l.n, thresh, boxes, probs, names, l.classes, im.w, im.h);
 
         save_image(im, "predictions");
         show_image(im, "predictions");
