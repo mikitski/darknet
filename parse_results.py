@@ -68,6 +68,8 @@ for fpath, subdirs, files in os.walk(resdir):
                         "hb": hb
                     }
 
+newlabels = {}
+
 with open("cartruck.train.list", "w") as tl: 
     for x in flines:
         line = flines[x]
@@ -76,10 +78,15 @@ with open("cartruck.train.list", "w") as tl:
         fname = line["fname"]
         
 #        print labels
-        lblidx = labels.index(line["lbl"])   
+#        lblidx = labels.index(line["lbl"])   
 
         
         tgtdir, tgtf = os.path.split(fname);
+        
+        #get new label from path
+        newlbl = os.path.basename(os.path.normpath(tgtdir))
+        newlabels[newlbl] = ""
+        lblidx = newlabels.keys().index(newlbl)
 
         # set target dir for labels        
         if(tgtdir.startswith("..")):
@@ -99,4 +106,10 @@ with open("cartruck.train.list", "w") as tl:
         
         tl.write(fname)
         tl.write("\n")
+
+
+with open("newlabels.list", "w") as nlblf:
+    for x in newlabels:
+        nlblf.write("%s\n" % x)
+
 
