@@ -19,7 +19,7 @@ def mkdir_p(path):
             raise
 
 
-boxfile = "cartruck.box.list"
+boxfile = "cartruck.box.list2.list"
 
 tsize = 128, 128
 
@@ -38,11 +38,15 @@ with open(boxfile) as bfile:
         tgtdir, tgtf = os.path.split(fname)
 
         if(tgtdir.startswith("..")):
-            tgtdir = tgtdir[3:]            
+            tgtdir = tgtdir[3:]     
+        if(tgtdir.startswith("/")):
+            tgtdir = tgtdir[1:]     
+        
         tgtdir = os.path.join("cropped", tgtdir)
         mkdir_p(tgtdir)
 
         tgtf = os.path.join(tgtdir, tgtf)  
+        print tgtf
             
         im = Image.open(fname)
         width, height = im.size
@@ -56,7 +60,7 @@ with open(boxfile) as bfile:
 
         im = im.crop((left, top, right, bot))
 #        im = im.thumbnail(tsize, Image.ANTIALIAS)
-        print tgtf
+        
         im.save(tgtf, "JPEG")
         
         
