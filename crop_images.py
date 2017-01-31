@@ -51,11 +51,12 @@ with open(boxfile) as bfile:
         top   = int((y - h/2.) * height);
         bot   = int((y + h/2.) * height);
         
-        print width, height
-        print left, top, right, bot
+#        print width, height
+#        print left, top, right, bot
 
         im = im.crop((left, top, right, bot))
 #        im = im.thumbnail(tsize, Image.ANTIALIAS)
+        print tgtf
         im.save(tgtf, "JPEG")
         
         
