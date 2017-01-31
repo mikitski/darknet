@@ -70,7 +70,7 @@ for fpath, subdirs, files in os.walk(resdir):
 
 newlabels = {}
 
-with open("cartruck.train.list", "w") as tl: 
+with open("cartruck.train.list", "w") as tl, open("cartruck.box.list", "w") as tb: 
     for x in flines:
         line = flines[x]
         if(line["lbl"] not in ("car", "truck") and line["wb"] < 0.4):
@@ -103,9 +103,8 @@ with open("cartruck.train.list", "w") as tl:
             t.write("%s %f %f %f %f\n" % (lblidx, line["xb"], line["yb"], line ["wb"], line["hb"]))
 
         
-        
-        tl.write(fname)
-        tl.write("\n")
+        tl.write("%s\n" % fname)        
+        tb.write("%s %s %f %f %f %f\n" % (fname, lblidx, line["xb"], line["yb"], line ["wb"], line["hb"]))
 
 
 with open("newlabels.list", "w") as nlblf:
