@@ -19,7 +19,7 @@ def mkdir_p(path):
             raise
 
 
-boxfile = "cartruck.box.list2.list"
+boxfile = "cartruck.box.list"
 
 tsize = 128, 128
 
